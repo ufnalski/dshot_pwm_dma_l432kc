@@ -1,5 +1,6 @@
 # STM32CubeIDE
 /.settings/
+/Assets/Tools/
 /Drivers/
 /Debug/
 /Release/

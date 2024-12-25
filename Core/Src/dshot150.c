@@ -8,8 +8,7 @@
 #include "dshot150.h"
 #include "tim.h"
 
-uint8_t dshot_dmabuffer_ccr[20];
-uint8_t dshot_dmabuffer_arr[20];
+uint8_t dshot_dmabuffer_ccr[17];
 
 void HAL_TIM_PWM_PulseFinishedCallback(TIM_HandleTypeDef *htim)
 {
@@ -24,11 +23,11 @@ void HAL_TIM_PWM_PulseFinishedCallback(TIM_HandleTypeDef *htim)
 }
 
 // https://github.com/mokhwasomssi/stm32_hal_dshot
-uint16_t dshot_prepare_packet(uint16_t value)
+uint16_t dshot_prepare_packet(uint16_t _command)
 {
 	uint16_t packet;
 
-	packet = (value << 1) | (DSHOT_TELEMETRY ? 1 : 0);
+	packet = (_command << 1) | (DSHOT_TELEMETRY ? 1 : 0);
 
 	// compute checksum
 	uint8_t csum = 0;
@@ -47,8 +46,7 @@ uint16_t dshot_prepare_packet(uint16_t value)
 	return packet; //^0x0110; // this is not CRC!
 }
 
-void dshot_prepare_dmabuffer(uint8_t *_dshot_dmabuffer_ccr,
-		uint8_t *_dshot_dmabuffer_arr, uint16_t _value)
+void dshot_prepare_dmabuffer(uint8_t *_dshot_dmabuffer_ccr, uint16_t _value)
 {
 	uint16_t packet;
 	packet = dshot_prepare_packet(_value);
@@ -57,37 +55,94 @@ void dshot_prepare_dmabuffer(uint8_t *_dshot_dmabuffer_ccr,
 	{
 		_dshot_dmabuffer_ccr[i] =
 				(packet & 0x8000) ? DSHOT150_BIT_1 : DSHOT150_BIT_0;
-		_dshot_dmabuffer_arr[i] = DSHOT150_TIM_ARR;
 		packet <<= 1;
 	}
+	// https://electronics.stackexchange.com/questions/377604/stm32-pwm-generates-excessive-pulses
 	_dshot_dmabuffer_ccr[16] = 0;
-	_dshot_dmabuffer_arr[16] = DSHOT150_TIM_ARR;
-	_dshot_dmabuffer_ccr[17] = 0;
-	_dshot_dmabuffer_arr[17] = DSHOT150_TIM_ARR;
-	_dshot_dmabuffer_ccr[18] = 0;
-	_dshot_dmabuffer_arr[18] = DSHOT150_TIM_ARR;
-	_dshot_dmabuffer_ccr[19] = 0;
-	_dshot_dmabuffer_arr[19] = DSHOT150_TIM_ARR;
 }
 
 void dshot_arm_esc(void)
 {
-	dshot_prepare_dmabuffer(dshot_dmabuffer_ccr, dshot_dmabuffer_arr, 0);
+	dshot_prepare_dmabuffer(dshot_dmabuffer_ccr, 0);
 
 	for (int i = 0; i < 1000; i++)
 	{
 		HAL_TIM_PWM_Start_DMA(&htim1, TIM_CHANNEL_1,
-				(uint32_t*) dshot_dmabuffer_ccr, 20);
-		HAL_Delay(3);
+				(uint32_t*) dshot_dmabuffer_ccr, 17);
+		HAL_Delay(1);
 	}
 }
 
+//void dshot_disarm_esc(void)
+//{
+//	dshot_prepare_dmabuffer(dshot_dmabuffer_ccr, 0);
+//
+//	HAL_TIM_PWM_Start_DMA(&htim1, TIM_CHANNEL_1,
+//			(uint32_t*) dshot_dmabuffer_ccr, 17);
+//	HAL_Delay(1);
+//}
+
+void dshot_led_on(DShot_LedColorTypeDef led_color)
+{
+	dshot_prepare_dmabuffer(dshot_dmabuffer_ccr, 22 + led_color);
+
+	HAL_TIM_PWM_Start_DMA(&htim1, TIM_CHANNEL_1,
+			(uint32_t*) dshot_dmabuffer_ccr, 17);
+	HAL_Delay(1);
+}
+
+void dshot_led_off(DShot_LedColorTypeDef led_color)
+{
+	dshot_prepare_dmabuffer(dshot_dmabuffer_ccr, 26 + led_color);
+
+	HAL_TIM_PWM_Start_DMA(&htim1, TIM_CHANNEL_1,
+			(uint32_t*) dshot_dmabuffer_ccr, 17);
+	HAL_Delay(1);
+}
+
+void dshot_set_spin_direction(DShot_SpinDirectionTypeDef spin_dir)
+{
+	if (spin_dir == DSHOT_SPIN_DIRECTION_NORMAL)
+	{
+		dshot_prepare_dmabuffer(dshot_dmabuffer_ccr, 20);
+	}
+	else if (spin_dir == DSHOT_SPIN_DIRECTION_REVERSE)
+	{
+		dshot_prepare_dmabuffer(dshot_dmabuffer_ccr, 21);
+	}
+	else
+	{
+		dshot_prepare_dmabuffer(dshot_dmabuffer_ccr, 0);
+	}
+
+	for (int i = 0; i < 10; i++)
+	{
+		HAL_TIM_PWM_Start_DMA(&htim1, TIM_CHANNEL_1,
+				(uint32_t*) dshot_dmabuffer_ccr, 17);
+		HAL_Delay(1);
+	}
+}
+
+//void dshot_save_settings(void)
+//{
+//	dshot_prepare_dmabuffer(dshot_dmabuffer_ccr, 12);
+//
+//	for (int i = 0; i < 6; i++)
+//	{
+//		HAL_TIM_PWM_Start_DMA(&htim1, TIM_CHANNEL_1,
+//				(uint32_t*) dshot_dmabuffer_ccr, 17);
+//		HAL_Delay(1);
+////		HAL_Delay(50);
+//	}
+//	HAL_Delay(50);
+//}
+
 void dshot_send_ref_speed(uint16_t _motor_speed)
 {
-	dshot_prepare_dmabuffer(dshot_dmabuffer_ccr, dshot_dmabuffer_arr,
-			_motor_speed);
+	dshot_prepare_dmabuffer(dshot_dmabuffer_ccr, _motor_speed);
 	HAL_TIM_PWM_Start_DMA(&htim1, TIM_CHANNEL_1,
-			(uint32_t*) dshot_dmabuffer_ccr, 20);
+			(uint32_t*) dshot_dmabuffer_ccr, 17);
+	HAL_Delay(1);
 }
 
 uint8_t check_dshot_ref_speed(uint16_t speed)

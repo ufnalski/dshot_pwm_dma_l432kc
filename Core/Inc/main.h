@@ -57,6 +57,7 @@ void Error_Handler(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
+#define DSHOT150_TIM_ARR 67-1
 #define MCO_Pin GPIO_PIN_0
 #define MCO_GPIO_Port GPIOA
 #define VCP_TX_Pin GPIO_PIN_2
@@ -71,6 +72,9 @@ void Error_Handler(void);
 #define VCP_RX_GPIO_Port GPIOA
 #define LD3_Pin GPIO_PIN_3
 #define LD3_GPIO_Port GPIOB
+#define WHITE_BUTTON_Pin GPIO_PIN_6
+#define WHITE_BUTTON_GPIO_Port GPIOB
+#define WHITE_BUTTON_EXTI_IRQn EXTI9_5_IRQn
 
 /* USER CODE BEGIN Private defines */
 
