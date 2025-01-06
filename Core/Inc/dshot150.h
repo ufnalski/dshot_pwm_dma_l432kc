@@ -11,6 +11,7 @@
 #include "main.h"
 
 // 80 MHz clock with prescaler 8-1 gives 0.1 us
+#define DSHOT150_TIM_ARR	67-1 // used inside CubeMX (see "No check" option in TIM1 config)
 #define DSHOT150_BIT_0  	22 // 1/3
 #define DSHOT150_BIT_1 		44 // 2/3
 #define DSHOT_TELEMETRY 	1

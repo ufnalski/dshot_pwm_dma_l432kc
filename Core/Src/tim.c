@@ -21,7 +21,7 @@
 #include "tim.h"
 
 /* USER CODE BEGIN 0 */
-
+#include "dshot150.h"
 /* USER CODE END 0 */
 
 TIM_HandleTypeDef htim1;
